@@ -1,0 +1,12 @@
+{
+  "yaml_parsed": true,
+  "manual_only": true,
+  "token_read_only": true,
+  "same_repo_private_release_input": true,
+  "boot_img_uploaded": true,
+  "actions_sha_pinned": true,
+  "shell_syntax": true,
+  "python_syntax": true,
+  "actionlint": "not completed: release download timed out",
+  "cloud_execution": "not run"
+}

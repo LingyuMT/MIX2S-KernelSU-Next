@@ -1,0 +1,271 @@
+{
+  "format": 1,
+  "date": "2026-10-14",
+  "source": "validated polaris audiofix3 + bootfix2",
+  "kernel": {
+    "repo": "https://github.com/MiCode/Xiaomi_Kernel_OpenSource",
+    "branch": "dipper-q-oss",
+    "commit": "dcfb1676925aec83b06ae04fd8ca989ced75067c",
+    "license": "GPL-2.0-only; per-file notices retained"
+  },
+  "ksu": {
+    "repo": "https://github.com/KernelSU-Next/KernelSU-Next",
+    "tag": "v3.4.0-legacy",
+    "commit": "8af3d4fec33be32fa5d3f8dae4f380fac45bf2cd",
+    "version": 33294,
+    "scope": "kernel and kernel/uapi only",
+    "license": "GPL-2.0-only"
+  },
+  "audio": {
+    "repo": "https://github.com/LineageOS/android_kernel_xiaomi_sdm845",
+    "commit": "adbb39e2b28e776556323d8530a396cc27db8edb",
+    "paths": "techpack/audio, original notices retained"
+  },
+  "toolchain": {
+    "url": "https://toolchains.bootlin.com/downloads/releases/toolchains/aarch64/tarballs/aarch64--glibc--stable-2020.02-1.tar.bz2",
+    "sha256": "afc6cb199a68992aed685861cb1e43d647bcaef63fea93d44e20e0e26623fd88",
+    "gcc": "8.4.0",
+    "prefix": "aarch64-linux-",
+    "redistributed": false
+  },
+  "tested_boot_sha256": "43c1c5f54d0bdd3f23d01954b96de2d559eaafb19b85b76c1f7f841c2b48d3d8",
+  "tested_kernel_sha256": "1442eaeedbfccc1f06fb8816cff90e5cbe12ac6f22a175f1ebe0f2632c8bedbd",
+  "kernel_modified_paths": [
+    "fs/read_write.c",
+    "fs/stat.c",
+    "fs/open.c",
+    "fs/namespace.c",
+    "fs/exec.c",
+    "fs/internal.h",
+    "kernel/Makefile",
+    "kernel/reboot.c",
+    "init/Kconfig",
+    "security/selinux/selinuxfs.c",
+    "security/selinux/xfrm.c",
+    "security/selinux/hooks.c",
+    "security/selinux/include/objsec.h",
+    "drivers/base/regmap/Makefile",
+    "drivers/input/input.c",
+    "include/linux/sched.h"
+  ],
+  "ksu_modified_paths": [
+    "Kbuild",
+    "feature/sucompat.c",
+    "feature/sulog.c",
+    "uapi/selinux.h",
+    "uapi/supercall.h",
+    "uapi/app_profile.h",
+    "uapi/feature.h",
+    "uapi/sulog.h",
+    "uapi/ksu.h",
+    "policy/allowlist.c",
+    "policy/app_profile.c",
+    "runtime/ksud_integration.c",
+    "infra/su_mount_ns.c",
+    "infra/seccomp_cache.c",
+    "sulog/event.c",
+    "sulog/event.h",
+    "hook/lsm_hooks.c",
+    "hook/setuid_hook.c",
+    "include/util.h",
+    "compat/kernel_compat.c",
+    "compat/kernel_compat.h",
+    "manager/apk_sign.c",
+    "manager/throne_tracker.c"
+  ],
+  "materialized_links": [
+    {
+      "path": "arch/cris/boot/dts/include/dt-bindings",
+      "old_target": "../../../../../include/dt-bindings",
+      "materialized_from": "include/dt-bindings"
+    },
+    {
+      "path": "arch/powerpc/boot/dts/include/dt-bindings",
+      "old_target": "../../../../../include/dt-bindings",
+      "materialized_from": "include/dt-bindings"
+    },
+    {
+      "path": "arch/mips/boot/dts/include/dt-bindings",
+      "old_target": "../../../../../include/dt-bindings",
+      "materialized_from": "include/dt-bindings"
+    },
+    {
+      "path": "arch/metag/boot/dts/include/dt-bindings",
+      "old_target": "../../../../../include/dt-bindings",
+      "materialized_from": "include/dt-bindings"
+    },
+    {
+      "path": "arch/arm/boot/dts/sun8i-a33-et-q8-v1.6.dts",
+      "old_target": "sun8i-a33-q8-tablet.dts",
+      "materialized_from": "arch/arm/boot/dts/sun8i-a33-q8-tablet.dts"
+    },
+    {
+      "path": "arch/arm/boot/dts/sun8i-a23-ippo-q8h-v5.dts",
+      "old_target": "sun8i-a23-q8-tablet.dts",
+      "materialized_from": "arch/arm/boot/dts/sun8i-a23-q8-tablet.dts"
+    },
+    {
+      "path": "arch/arm/boot/dts/sun8i-a33-ippo-q8h-v1.2.dts",
+      "old_target": "sun8i-a33-q8-tablet.dts",
+      "materialized_from": "arch/arm/boot/dts/sun8i-a33-q8-tablet.dts"
+    },
+    {
+      "path": "arch/arm/boot/dts/sun8i-a23-ippo-q8h-v1.2.dts",
+      "old_target": "sun8i-a23-q8-tablet.dts",
+      "materialized_from": "arch/arm/boot/dts/sun8i-a23-q8-tablet.dts"
+    },
+    {
+      "path": "arch/arm/boot/dts/include/dt-bindings",
+      "old_target": "../../../../../include/dt-bindings",
+      "materialized_from": "include/dt-bindings"
+    },
+    {
+      "path": "arch/arm64/boot/dts/broadcom/bcm2835-rpi.dtsi",
+      "old_target": "../../../../arm/boot/dts/bcm2835-rpi.dtsi",
+      "materialized_from": "arch/arm/boot/dts/bcm2835-rpi.dtsi"
+    },
+    {
+      "path": "arch/arm64/boot/dts/broadcom/bcm283x.dtsi",
+      "old_target": "../../../../arm/boot/dts/bcm283x.dtsi",
+      "materialized_from": "arch/arm/boot/dts/bcm283x.dtsi"
+    },
+    {
+      "path": "arch/arm64/boot/dts/broadcom/bcm283x-rpi-smsc9514.dtsi",
+      "old_target": "../../../../arm/boot/dts/bcm283x-rpi-smsc9514.dtsi",
+      "materialized_from": "arch/arm/boot/dts/bcm283x-rpi-smsc9514.dtsi"
+    },
+    {
+      "path": "arch/arm64/boot/dts/arm/vexpress-v2m-rs1.dtsi",
+      "old_target": "../../../../arm/boot/dts/vexpress-v2m-rs1.dtsi",
+      "materialized_from": "arch/arm/boot/dts/vexpress-v2m-rs1.dtsi"
+    },
+    {
+      "path": "arch/arm64/boot/dts/include/dt-bindings",
+      "old_target": "../../../../../include/dt-bindings",
+      "materialized_from": "include/dt-bindings"
+    },
+    {
+      "path": "arch/arm64/boot/dts/socionext/uniphier-ref-daughter.dtsi",
+      "old_target": "../../../../arm/boot/dts/uniphier-ref-daughter.dtsi",
+      "materialized_from": "arch/arm/boot/dts/uniphier-ref-daughter.dtsi"
+    },
+    {
+      "path": "arch/arm64/boot/dts/socionext/uniphier-pinctrl.dtsi",
+      "old_target": "../../../../arm/boot/dts/uniphier-pinctrl.dtsi",
+      "materialized_from": "arch/arm/boot/dts/uniphier-pinctrl.dtsi"
+    },
+    {
+      "path": "arch/arm64/boot/dts/socionext/uniphier-support-card.dtsi",
+      "old_target": "../../../../arm/boot/dts/uniphier-support-card.dtsi",
+      "materialized_from": "arch/arm/boot/dts/uniphier-support-card.dtsi"
+    },
+    {
+      "path": "kernel/kernelsu/include/uapi",
+      "old_target": "../../uapi",
+      "materialized_from": "kernel/kernelsu/uapi"
+    },
+    {
+      "path": "include/uapi/linux/ion.h",
+      "old_target": "../../../drivers/staging/android/uapi/ion.h",
+      "materialized_from": "drivers/staging/android/uapi/ion.h"
+    },
+    {
+      "path": "include/uapi/linux/msm_ion.h",
+      "old_target": "../../../drivers/staging/android/uapi/msm_ion.h",
+      "materialized_from": "drivers/staging/android/uapi/msm_ion.h"
+    },
+    {
+      "path": "include/dt-bindings/input/linux-event-codes.h",
+      "old_target": "../../uapi/linux/input-event-codes.h",
+      "materialized_from": "include/uapi/linux/input-event-codes.h"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/stringloops/memcmp_64.S",
+      "old_target": "../../../../../arch/powerpc/lib/memcmp_64.S",
+      "materialized_from": "arch/powerpc/lib/memcmp_64.S"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/copyloops/memcpy_64.S",
+      "old_target": "../../../../../arch/powerpc/lib/memcpy_64.S",
+      "materialized_from": "arch/powerpc/lib/memcpy_64.S"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/copyloops/copyuser_64.S",
+      "old_target": "../../../../../arch/powerpc/lib/copyuser_64.S",
+      "materialized_from": "arch/powerpc/lib/copyuser_64.S"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/copyloops/copyuser_power7.S",
+      "old_target": "../../../../../arch/powerpc/lib/copyuser_power7.S",
+      "materialized_from": "arch/powerpc/lib/copyuser_power7.S"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/copyloops/memcpy_power7.S",
+      "old_target": "../../../../../arch/powerpc/lib/memcpy_power7.S",
+      "materialized_from": "arch/powerpc/lib/memcpy_power7.S"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/vphn/vphn.h",
+      "old_target": "../../../../../arch/powerpc/mm/vphn.h",
+      "materialized_from": "arch/powerpc/mm/vphn.h"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/vphn/vphn.c",
+      "old_target": "../../../../../arch/powerpc/mm/vphn.c",
+      "materialized_from": "arch/powerpc/mm/vphn.c"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/primitives/word-at-a-time.h",
+      "old_target": "../../../../../arch/powerpc/include/asm/word-at-a-time.h",
+      "materialized_from": "arch/powerpc/include/asm/word-at-a-time.h"
+    },
+    {
+      "path": "tools/testing/selftests/powerpc/primitives/asm/asm-compat.h",
+      "old_target": "../.././../../../../arch/powerpc/include/asm/asm-compat.h",
+      "materialized_from": "arch/powerpc/include/asm/asm-compat.h"
+    }
+  ],
+  "excluded": [
+    "stock boot/ramdisk",
+    "vendor .ko",
+    "toolchain binaries",
+    "device logs",
+    "SSH credentials",
+    "manager APK",
+    "ksud userspace"
+  ],
+  "mkbootimg": {
+    "source": "https://raw.githubusercontent.com/aosp-mirror/platform_system_core/android10-release/mkbootimg/mkbootimg.py",
+    "sha256": "4d87cfb5482efcd556008cfe563ae442a934acb7ef0df082d422307f26a120b7",
+    "license": "Apache-2.0"
+  },
+  "audio_integration_notice_paths": [
+    "techpack/audio/Makefile",
+    "techpack/audio/Kconfig",
+    "techpack/audio/soc/Makefile",
+    "techpack/audio/soc/regmap-swr.c",
+    "techpack/audio/dsp/Makefile",
+    "techpack/audio/dsp/codecs/Makefile",
+    "techpack/audio/ipc/Makefile",
+    "techpack/audio/include/Kbuild",
+    "techpack/audio/include/uapi/Kbuild",
+    "techpack/audio/include/uapi/linux/Kbuild",
+    "techpack/audio/include/uapi/sound/Kbuild",
+    "techpack/audio/asoc/Makefile",
+    "techpack/audio/asoc/elliptic/Makefile",
+    "techpack/audio/asoc/elliptic/io_modules/Makefile",
+    "techpack/audio/asoc/elliptic/io_modules/userspace/Makefile",
+    "techpack/audio/asoc/codecs/Makefile",
+    "techpack/audio/asoc/codecs/sdm660_cdc/Makefile",
+    "techpack/audio/asoc/codecs/wcd934x/Makefile",
+    "techpack/audio/asoc/codecs/tas2557/Makefile",
+    "techpack/audio/asoc/codecs/msm_sdw/Makefile",
+    "techpack/audio/asoc/codecs/tas2559/Makefile"
+  ],
+  "github_boot_packaging": {
+    "private_repository_required": true,
+    "input_release": "stock-input",
+    "input_asset": "polaris-stock-boot.img",
+    "stock_sha256": "729d574ce3c67ce7516b2a65a1d7aaf7acc3a5e69a0f0cbfcee7098216689de2"
+  }
+}

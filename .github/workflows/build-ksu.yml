@@ -1,0 +1,67 @@
+name: Build polaris KernelSU Next boot.img
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: polaris-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: Require private boot artifact storage
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [[ "$REPOSITORY_PRIVATE" != 'true' ]]; then
+            echo 'Use a private repository for the original MIUI ramdisk and generated boot.img.' >&2
+            exit 1
+          fi
+      - name: Checkout fixed project source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev python3 curl bzip2 xz-utils
+      - name: Download original boot from private input release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p .private-input
+          gh release download stock-input --pattern polaris-stock-boot.img --dir .private-input
+          echo '729d574ce3c67ce7516b2a65a1d7aaf7acc3a5e69a0f0cbfcee7098216689de2  .private-input/polaris-stock-boot.img' | sha256sum --check
+      - name: Test compatibility error paths
+        run: bash build-support/run-tests.sh
+      - name: Build and verify KSU kernel
+        env:
+          JOBS: '2'
+        run: |
+          set -o pipefail
+          mkdir -p dist
+          bash build-support/build.sh 2>&1 | tee dist/build.log
+      - name: Pack and verify flashable boot.img
+        run: |
+          python3 build-support/repack-boot.py --stock .private-input/polaris-stock-boot.img --kernel dist/Image.gz-dtb --output dist/boot.img
+          (cd dist; sha256sum boot.img > boot.img.sha256; cat boot.img.sha256 >> SHA256SUMS)
+      - name: Upload downloadable boot.img
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: polaris-boot-${{ github.sha }}
+          path: |
+            dist/boot.img
+            dist/boot.img.json
+            dist/boot.img.sha256
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload kernel and build evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: polaris-ksunext-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
