@@ -14,17 +14,15 @@
 
 公开仓库仅构建并发布内核和构建资料。在 **Actions → Build polaris KernelSU Next kernel → Run workflow** 选择 `main` 手动构建，不需要上传原厂 boot 或配置仓库 Secrets。首次设置见 [GITHUB-SETUP.md](build-support/GITHUB-SETUP.md)。
 
-构建固定使用 Ubuntu 22.04、两个编译任务和带 SHA256 校验的工具链。Action 本身固定到具体提交，不执行远程 KSU 安装脚本，不自动升级 KSU。工作流只有读取仓库权限，不会创建 Release 或自动刷机。
+构建固定使用 Ubuntu 22.04、两个编译任务和带 SHA256 校验的工具链。Action 本身固定到具体提交，不执行远程 KSU 安装脚本，不自动升级 KSU。内核构建工作流只有读取仓库权限；独立发布工作流在构建及校验成功后自动创建 Release，不自动刷机。
 
-成功后下载 `polaris-ksunext-提交号` 产物 ZIP，其中包括：
+构建及校验成功后，在仓库 [Releases](https://github.com/LingyuMT/MIX2S-KernelSU-Next/releases) 下载 `polaris-ksunext-提交号.zip`；Actions 中也保留构建附件。其中包括：
 
 - `Image.gz-dtb`：KSU ARM64 内核及设备树；**不是可直接刷入的 boot.img**。
 - `kernel.config`、`Module.symvers`、`SHA256SUMS`。
 - `validation.json`、`build-manifest.json`、来源记录和构建日志。
 
 验证失败不会上传成功产物。云端首次运行仍需在 GitHub 实际确认，离线构建验证不能代替云端运行记录。
-
-云端不获取原厂 boot、不打包或上传含原厂 ramdisk 的完整镜像。使用者需要将下载的内核与自己的原版 boot 在本地打包，步骤见下文。不要将 `Image.gz-dtb` 直接刷入 boot 分区。
 
 云端不获取原厂 boot、不打包或上传含原厂 ramdisk 的完整镜像。使用者需要将下载的内核与自己的原版 boot 在本地打包，步骤见下文。不要将 `Image.gz-dtb` 直接刷入 boot 分区。
 

@@ -1,0 +1,74 @@
+name: Publish polaris kernel release
+on:
+  workflow_run:
+    workflows: [Build polaris KernelSU Next kernel]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful kernel build run ID to publish
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: polaris-kernel-releases
+  cancel-in-progress: false
+jobs:
+  release:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+    steps:
+      - name: Checkout trusted release tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Verify successful main branch build
+        run: |
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID" > run.json
+          jq -e --arg repo "$GH_REPO" '
+            .status == "completed" and .conclusion == "success" and
+            .head_branch == "main" and .head_repository.full_name == $repo and
+            .event == "workflow_dispatch" and .path == ".github/workflows/build-ksu.yml"
+          ' run.json
+          sha=$(jq -r .head_sha run.json)
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "BUILD_SHA=$sha" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=kernel-${sha:0:12}-r${BUILD_RUN_ID}" >> "$GITHUB_ENV"
+      - name: Download and validate kernel only assets
+        run: |
+          gh run download "$BUILD_RUN_ID" --name "polaris-ksunext-$BUILD_SHA" --dir dist
+          python3 build-support/prepare-release.py --dist dist --output release \
+            --commit "$BUILD_SHA" --run-id "$BUILD_RUN_ID" --repository "$GH_REPO"
+      - name: Publish complete release
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > existing-draft.txt 2>/dev/null; then
+            target=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
+            [[ "$target" == "$BUILD_SHA" ]]
+            if [[ "$(cat existing-draft.txt)" == false ]]; then
+              echo "Release already published: $RELEASE_TAG"
+              echo "https://github.com/$GH_REPO/releases/tag/$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          else
+            gh release create "$RELEASE_TAG" --target "$BUILD_SHA" --draft \
+              --title "$(cat release/title.txt)" --notes-file release/RELEASE.md
+          fi
+          gh release upload "$RELEASE_TAG" --clobber release/polaris-ksunext-*.zip release/Image.gz-dtb release/SHA256SUMS
+          gh release edit "$RELEASE_TAG" --draft=false --latest
+          echo "https://github.com/$GH_REPO/releases/tag/$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
