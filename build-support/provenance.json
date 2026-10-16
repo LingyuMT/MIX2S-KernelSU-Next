@@ -263,9 +263,11 @@
     "techpack/audio/asoc/codecs/tas2559/Makefile"
   ],
   "github_boot_packaging": {
-    "private_repository_required": true,
-    "input_release": "stock-input",
-    "input_asset": "polaris-stock-boot.img",
+    "cloud_kernel_only": true,
+    "stock_boot_downloaded": false,
+    "stock_boot_uploaded": false,
+    "boot_img_uploaded": false,
+    "local_repack_supported": true,
     "stock_sha256": "729d574ce3c67ce7516b2a65a1d7aaf7acc3a5e69a0f0cbfcee7098216689de2"
   }
 }

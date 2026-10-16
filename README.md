@@ -12,17 +12,21 @@
 
 ## GitHub 构建
 
-默认使用私有仓库。将源码推送到 `main`，在同仓库的私有 `stock-input` Release 保存原版 boot 后，在 **Actions → Build polaris KernelSU Next boot.img → Run workflow** 手动构建。首次设置见 [GITHUB-SETUP.md](build-support/GITHUB-SETUP.md)。
+公开仓库仅构建并发布内核和构建资料。在 **Actions → Build polaris KernelSU Next kernel → Run workflow** 选择 `main` 手动构建，不需要上传原厂 boot 或配置仓库 Secrets。首次设置见 [GITHUB-SETUP.md](build-support/GITHUB-SETUP.md)。
 
 构建固定使用 Ubuntu 22.04、两个编译任务和带 SHA256 校验的工具链。Action 本身固定到具体提交，不执行远程 KSU 安装脚本，不自动升级 KSU。工作流只有读取仓库权限，不会创建 Release 或自动刷机。
 
-成功后下载 `polaris-boot-提交号` 产物 ZIP，解压即可得到可刷入的 **`boot.img`**、打包报告和校验清单。另一份附件包括：
+成功后下载 `polaris-ksunext-提交号` 产物 ZIP，其中包括：
 
 - `Image.gz-dtb`：KSU ARM64 内核及设备树；**不是可直接刷入的 boot.img**。
 - `kernel.config`、`Module.symvers`、`SHA256SUMS`。
 - `validation.json`、`build-manifest.json`、来源记录和构建日志。
 
 验证失败不会上传成功产物。云端首次运行仍需在 GitHub 实际确认，离线构建验证不能代替云端运行记录。
+
+云端不获取原厂 boot、不打包或上传含原厂 ramdisk 的完整镜像。使用者需要将下载的内核与自己的原版 boot 在本地打包，步骤见下文。不要将 `Image.gz-dtb` 直接刷入 boot 分区。
+
+云端不获取原厂 boot、不打包或上传含原厂 ramdisk 的完整镜像。使用者需要将下载的内核与自己的原版 boot 在本地打包，步骤见下文。不要将 `Image.gz-dtb` 直接刷入 boot 分区。
 
 ## Linux / WSL 本地构建
 
@@ -53,7 +57,7 @@ python3 build-support/repack-boot.py --stock /private/path/boot.img --kernel dis
 
 打包器限定已验证的原厂 boot SHA256，保持原厂 ramdisk、启动参数和布局；更新内核及校验，移除失效的原厂 BootSignature。需要已经解锁的 bootloader。本项目不为其他 ROM 或其他 boot 格式提供兼容保证。
 
-含原厂 ramdisk 的 boot 不提交到源码 Git 历史；本方案只在私有 Release 保存原版素材，并在私有 Actions 产物中输出新 boot。公开发布需另行确认 ramdisk 的再分发许可。不要把 SSH 私钥、ADB 报告、个人数据或原厂 `.ko` 加入仓库。
+本项目不在源码、Release 或 Actions 附件中发布原厂 boot、ramdisk 或含这些素材的完整镜像。本地打包仅使用你自行取得的、匹配目标系统的原版 boot。不要把 SSH 私钥、ADB 报告、个人数据或原厂 `.ko` 加入仓库。
 
 ## 更新 KSU
 

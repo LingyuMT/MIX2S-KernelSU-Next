@@ -2,11 +2,13 @@
   "yaml_parsed": true,
   "manual_only": true,
   "token_read_only": true,
-  "same_repo_private_release_input": true,
-  "boot_img_uploaded": true,
+  "cloud_kernel_only": true,
+  "stock_boot_downloaded": false,
+  "boot_img_uploaded": false,
+  "public_artifact_allowlist": true,
   "actions_sha_pinned": true,
   "shell_syntax": true,
   "python_syntax": true,
-  "actionlint": "not completed: release download timed out",
+  "actionlint": "v1.7.12 passed (shellcheck and pyflakes disabled); verified release archive SHA256 6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9",
   "cloud_execution": "not run"
 }
