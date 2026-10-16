@@ -1,0 +1,1153 @@
+--- a/kernel/kernelsu/Kbuild
++++ b/kernel/kernelsu/Kbuild
+@@ -215,11 +215,8 @@
+ $(info -- KSU_NEXT: adding 'int path_umount(struct path *path, int flags);' to $(srctree)/fs/internal.h)
+ endif
+ 
+-ifneq ($(shell grep -q "atomic_t filter_count;" $(srctree)/include/linux/seccomp.h; echo $$?),0)
+-$(info -- KSU_NEXT: patching struct seccomp for filter_count)
+-$(shell sed -i '/int mode;/a\	atomic_t filter_count;' $(srctree)/include/linux/seccomp.h)
+-$(shell sed -i '/#include <linux\/thread_info.h>/a\#include <linux/atomic.h>' $(srctree)/include/linux/seccomp.h)
+-endif
++# Polaris 4.9 uses put_seccomp_filter; keep public seccomp ABI unchanged.
++
+ 
+ # security/selinux backports
+ ifneq ($(shell grep -q "selinux_inode(inode)" $(srctree)/security/selinux/hooks.c; echo $$?),0)
+--- a/kernel/kernelsu/feature/sucompat.c
++++ b/kernel/kernelsu/feature/sucompat.c
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/preempt.h>
+ #include <linux/printk.h>
+ #include <linux/mm.h>
+@@ -11,7 +12,7 @@
+ #include <linux/pgtable.h>
+ #endif
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+-#include <linux/compiler_types.h>
++#include <linux/compiler.h>
+ #include <linux/compiler.h>
+ #endif
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+--- a/kernel/kernelsu/feature/sulog.c
++++ b/kernel/kernelsu/feature/sulog.c
+@@ -1,7 +1,8 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/cache.h>
+ #include <linux/version.h>
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+-#include <linux/compiler_types.h>
++#include <linux/compiler.h>
+ #else
+ #include <linux/compiler.h>
+ #endif
+--- a/kernel/kernelsu/uapi/selinux.h
++++ b/kernel/kernelsu/uapi/selinux.h
+@@ -0,0 +1,32 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
++#ifndef __KSU_UAPI_SELINUX_H
++#define __KSU_UAPI_SELINUX_H
++
++#include <linux/types.h>
++
++#define KSU_SEPOLICY_CMD_NORMAL_PERM 1
++#define KSU_SEPOLICY_CMD_XPERM 2
++#define KSU_SEPOLICY_CMD_TYPE_STATE 3
++#define KSU_SEPOLICY_CMD_TYPE 4
++#define KSU_SEPOLICY_CMD_TYPE_ATTR 5
++#define KSU_SEPOLICY_CMD_ATTR 6
++#define KSU_SEPOLICY_CMD_TYPE_TRANSITION 7
++#define KSU_SEPOLICY_CMD_TYPE_CHANGE 8
++#define KSU_SEPOLICY_CMD_GENFSCON 9
++
++#define KSU_SEPOLICY_SUBCMD_NORMAL_PERM_ALLOW 1
++#define KSU_SEPOLICY_SUBCMD_NORMAL_PERM_DENY 2
++#define KSU_SEPOLICY_SUBCMD_NORMAL_PERM_AUDITALLOW 3
++#define KSU_SEPOLICY_SUBCMD_NORMAL_PERM_DONTAUDIT 4
++
++#define KSU_SEPOLICY_SUBCMD_XPERM_ALLOW 1
++#define KSU_SEPOLICY_SUBCMD_XPERM_AUDITALLOW 2
++#define KSU_SEPOLICY_SUBCMD_XPERM_DONTAUDIT 3
++
++#define KSU_SEPOLICY_SUBCMD_TYPE_STATE_PERMISSIVE 1
++#define KSU_SEPOLICY_SUBCMD_TYPE_STATE_ENFORCE 2
++
++#define KSU_SEPOLICY_SUBCMD_TYPE_CHANGE_CHANGE 1
++#define KSU_SEPOLICY_SUBCMD_TYPE_CHANGE_MEMBER 2
++
++#endif
+--- a/kernel/kernelsu/uapi/supercall.h
++++ b/kernel/kernelsu/uapi/supercall.h
+@@ -0,0 +1,202 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
++#ifndef __KSU_UAPI_SUPERCALL_H
++#define __KSU_UAPI_SUPERCALL_H
++
++#include <linux/ioctl.h>
++#include <linux/types.h>
++
++#include "uapi/app_profile.h"
++
++// 2: allowlist v4 root profile flags
++// 3: scoped su-session driver fd
++// 4: add KSU_GET_INFO_FLAG_BUNDLED
++#define KERNEL_SU_UAPI_VERSION 4
++
++/* Magic numbers for reboot hook to install fd */
++#define KSU_INSTALL_MAGIC1 0xDEADBEEF
++#define KSU_INSTALL_MAGIC2 0xCAFEBABE
++
++// Toolkit extensions
++#define CHANGE_MANAGER_UID 10006
++#define KSU_UMOUNT_GETSIZE 107
++#define KSU_UMOUNT_GETLIST 108
++#define GET_SULOG_DUMP_V2 10010
++#define CHANGE_KSUVER 10011
++#define CHANGE_SPOOF_UNAME 10012
++
++struct ksu_become_daemon_cmd {
++    __u8 token[65]; /* Input: daemon token (null-terminated) */
++};
++
++#define EVENT_POST_FS_DATA 1
++#define EVENT_BOOT_COMPLETED 2
++#define EVENT_MODULE_MOUNTED 3
++
++#define KSU_GET_INFO_FLAG_LKM (1U << 0)
++#define KSU_GET_INFO_FLAG_MANAGER (1U << 1)
++#define KSU_GET_INFO_FLAG_LATE_LOAD (1U << 2)
++#define KSU_GET_INFO_FLAG_PR_BUILD (1U << 3)
++#define KSU_GET_INFO_FLAG_BUNDLED (1U << 4)
++
++struct ksu_get_info_cmd {
++    __u32 version; /* Output: KERNEL_SU_VERSION */
++    __u32 flags; /* Output: KSU_GET_INFO_FLAG_* bits */
++    __u32 features; /* Output: max feature ID supported */
++    __u32 uapi_version; /* Output: KERNEL_SU_UAPI_VERSION */
++};
++
++struct ksu_get_info_legacy_cmd {
++    __u32 version; /* Output: KERNEL_SU_VERSION */
++    __u32 flags; /* Output: KSU_GET_INFO_FLAG_* bits */
++    __u32 features; /* Output: max feature ID supported */
++};
++
++struct ksu_report_event_cmd {
++    __u32 event; /* Input: EVENT_POST_FS_DATA, EVENT_BOOT_COMPLETED, etc. */
++};
++
++struct ksu_set_sepolicy_cmd {
++    __u64 data_len; /* Input: bytes of serialized command payload */
++    __aligned_u64 data; /* Input: pointer to serialized payload */
++};
++
++struct ksu_sepolicy_cmd_hdr {
++    __u32 cmd; /* Input: command type, CMD_* */
++    __u32 subcmd; /* Input: command subtype */
++};
++/*
++ * After each ksu_sepolicy_cmd_hdr, command arguments are encoded sequentially as:
++ * [u32 len][len bytes][\0], where len excludes the trailing '\0'.
++ * len == 0 represents ALL.
++ * Argument count is derived from cmd:
++ * KSU_SEPOLICY_CMD_NORMAL_PERM=4, KSU_SEPOLICY_CMD_XPERM=5,
++ * KSU_SEPOLICY_CMD_TYPE_STATE=1, KSU_SEPOLICY_CMD_TYPE=2,
++ * KSU_SEPOLICY_CMD_TYPE_ATTR=2, KSU_SEPOLICY_CMD_ATTR=1,
++ * KSU_SEPOLICY_CMD_TYPE_TRANSITION=5, KSU_SEPOLICY_CMD_TYPE_CHANGE=4,
++ * KSU_SEPOLICY_CMD_GENFSCON=3.
++ */
++
++struct ksu_check_safemode_cmd {
++    __u8 in_safe_mode; /* Output: true if in safe mode, false otherwise */
++};
++
++/* deprecated */
++struct ksu_get_allow_list_cmd {
++    __u32 uids[128]; /* Output: array of allowed/denied UIDs */
++    __u32 count; /* Output: number of UIDs in array */
++    __u8 allow; /* Input: true for allow list, false for deny list */
++};
++
++struct ksu_new_get_allow_list_cmd {
++    __u16 count; /* Input / Output: number of UIDs in array */
++    __u16 total_count; /* Output: total number of UIDs in requested list */
++    __u32 uids[0]; /* Output: array of allowed/denied UIDs */
++};
++
++struct ksu_uid_granted_root_cmd {
++    __u32 uid; /* Input: target UID to check */
++    __u8 granted; /* Output: true if granted, false otherwise */
++};
++
++struct ksu_uid_should_umount_cmd {
++    __u32 uid; /* Input: target UID to check */
++    __u8 should_umount; /* Output: true if should umount, false otherwise */
++};
++
++struct ksu_get_manager_appid_cmd {
++    __u32 appid; /* Output: manager app id */
++};
++
++struct ksu_get_app_profile_cmd {
++    struct app_profile profile; /* Input/Output: app profile structure */
++};
++
++struct ksu_set_app_profile_cmd {
++    struct app_profile profile; /* Input: app profile structure */
++};
++
++struct ksu_get_feature_cmd {
++    __u32 feature_id; /* Input: feature ID (enum ksu_feature_id) */
++    __u64 value; /* Output: feature value/state */
++    __u8 supported; /* Output: true if feature is supported, false otherwise */
++};
++
++struct ksu_set_feature_cmd {
++    __u32 feature_id; /* Input: feature ID (enum ksu_feature_id) */
++    __u64 value; /* Input: feature value/state to set */
++};
++
++struct ksu_get_wrapper_fd_cmd {
++    __u32 fd; /* Input: userspace fd */
++    __u32 flags; /* Input: flags of userspace fd */
++};
++
++struct ksu_manage_mark_cmd {
++    __u32 operation; /* Input: KSU_MARK_* */
++    __s32 pid; /* Input: target pid (0 for all processes) */
++    __u32 result; /* Output: for get operation - mark status or reg_count */
++};
++
++struct ksu_get_hook_mode_cmd {
++    char mode[16];
++};
++
++struct ksu_get_version_tag_cmd {
++    char tag[32];
++};
++
++#define KSU_MARK_GET 1
++#define KSU_MARK_MARK 2
++#define KSU_MARK_UNMARK 3
++#define KSU_MARK_REFRESH 4
++
++struct ksu_nuke_ext4_sysfs_cmd {
++    __aligned_u64 arg; /* Input: mnt pointer */
++};
++
++struct ksu_add_try_umount_cmd {
++    __aligned_u64 arg; /* char ptr, this is the mountpoint */
++    __u32 flags; /* this is the flag we use for it */
++    __u8 mode; /* denotes what to do with it 0:wipe_list 1:add_to_list 2:delete_entry */
++};
++
++struct ksu_get_sulog_fd_cmd {
++    __u32 flags; /* Input: reserved for future use, must be 0 */
++};
++
++#define KSU_UMOUNT_WIPE 0 /* ignore everything and wipe list */
++#define KSU_UMOUNT_ADD 1 /* add entry (path + flags) */
++#define KSU_UMOUNT_DEL 2 /* delete entry, strcmp */
++
++/* IOCTL command definitions */
++#define KSU_IOCTL_GRANT_ROOT _IOC(_IOC_NONE, 'K', 1, 0)
++#define KSU_IOCTL_GET_INFO _IOR('K', 2, struct ksu_get_info_cmd)
++/* deprecated */
++#define KSU_IOCTL_GET_INFO_LEGACY _IOC(_IOC_READ, 'K', 2, 0)
++#define KSU_IOCTL_REPORT_EVENT _IOC(_IOC_WRITE, 'K', 3, 0)
++#define KSU_IOCTL_SET_SEPOLICY _IOC(_IOC_READ | _IOC_WRITE, 'K', 4, 0)
++#define KSU_IOCTL_CHECK_SAFEMODE _IOC(_IOC_READ, 'K', 5, 0)
++/* deprecated */
++#define KSU_IOCTL_GET_ALLOW_LIST _IOC(_IOC_READ | _IOC_WRITE, 'K', 6, 0)
++/* deprecated */
++#define KSU_IOCTL_GET_DENY_LIST _IOC(_IOC_READ | _IOC_WRITE, 'K', 7, 0)
++#define KSU_IOCTL_NEW_GET_ALLOW_LIST _IOWR('K', 6, struct ksu_new_get_allow_list_cmd)
++#define KSU_IOCTL_NEW_GET_DENY_LIST _IOWR('K', 7, struct ksu_new_get_allow_list_cmd)
++#define KSU_IOCTL_UID_GRANTED_ROOT _IOC(_IOC_READ | _IOC_WRITE, 'K', 8, 0)
++#define KSU_IOCTL_UID_SHOULD_UMOUNT _IOC(_IOC_READ | _IOC_WRITE, 'K', 9, 0)
++#define KSU_IOCTL_GET_MANAGER_APPID _IOC(_IOC_READ, 'K', 10, 0)
++#define KSU_IOCTL_GET_APP_PROFILE _IOC(_IOC_READ | _IOC_WRITE, 'K', 11, 0)
++#define KSU_IOCTL_SET_APP_PROFILE _IOC(_IOC_WRITE, 'K', 12, 0)
++#define KSU_IOCTL_GET_FEATURE _IOC(_IOC_READ | _IOC_WRITE, 'K', 13, 0)
++#define KSU_IOCTL_SET_FEATURE _IOC(_IOC_WRITE, 'K', 14, 0)
++#define KSU_IOCTL_GET_WRAPPER_FD _IOC(_IOC_WRITE, 'K', 15, 0)
++#define KSU_IOCTL_MANAGE_MARK _IOC(_IOC_READ | _IOC_WRITE, 'K', 16, 0)
++#define KSU_IOCTL_NUKE_EXT4_SYSFS _IOC(_IOC_WRITE, 'K', 17, 0)
++#define KSU_IOCTL_ADD_TRY_UMOUNT _IOC(_IOC_WRITE, 'K', 18, 0)
++#define KSU_IOCTL_SET_INIT_PGRP _IO('K', 19)
++#define KSU_IOCTL_GET_SULOG_FD _IOW('K', 20, struct ksu_get_sulog_fd_cmd)
++#define KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT _IO('K', 21)
++#define KSU_IOCTL_GET_HOOK_MODE _IOC(_IOC_READ, 'K', 98, 0)
++#define KSU_IOCTL_GET_VERSION_TAG _IOC(_IOC_READ, 'K', 99, 0)
++
++#endif
+--- a/kernel/kernelsu/uapi/app_profile.h
++++ b/kernel/kernelsu/uapi/app_profile.h
+@@ -0,0 +1,68 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
++#ifndef __KSU_UAPI_APP_PROFILE_H
++#define __KSU_UAPI_APP_PROFILE_H
++
++#include <linux/types.h>
++
++#define KSU_APP_PROFILE_VER 4
++#define KSU_MAX_PACKAGE_NAME 256
++/* NGROUPS_MAX for Linux is 65535 generally, but we only supports 32 groups. */
++#define KSU_MAX_GROUPS 32
++#define KSU_SELINUX_DOMAIN 64
++
++#define FLAG_KSU_NO_NEW_PRIVS (1ULL << 0)
++
++struct root_profile {
++    __s32 uid;
++    __s32 gid;
++
++    __u32 groups_count;
++    __s32 groups[KSU_MAX_GROUPS];
++
++    /* kernel_cap_t is u32[2] for capabilities v3 */
++    struct {
++        __u64 effective;
++        __u64 permitted;
++        __u64 inheritable;
++    } capabilities;
++
++    char selinux_domain[KSU_SELINUX_DOMAIN];
++
++    __s32 namespaces;
++
++    __u64 flags;
++};
++
++struct non_root_profile {
++    bool umount_modules;
++};
++
++struct app_profile {
++    /*
++     * It may be utilized for backward compatibility, although we have never
++     * explicitly made any promises regarding this.
++     */
++    __u32 version;
++
++    /* this is usually the package of the app, but can be other value for special apps */
++    char key[KSU_MAX_PACKAGE_NAME];
++    __s32 curr_uid;
++    bool allow_su;
++
++    union {
++        struct {
++            bool use_default;
++            char template_name[KSU_MAX_PACKAGE_NAME];
++
++            struct root_profile profile;
++        } rp_config;
++
++        struct {
++            bool use_default;
++
++            struct non_root_profile profile;
++        } nrp_config;
++    };
++};
++
++#endif
+--- a/kernel/kernelsu/uapi/feature.h
++++ b/kernel/kernelsu/uapi/feature.h
+@@ -0,0 +1,18 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
++#ifndef __KSU_UAPI_FEATURE_H
++#define __KSU_UAPI_FEATURE_H
++
++enum ksu_feature_id {
++    KSU_FEATURE_SU_COMPAT = 0,
++    KSU_FEATURE_KERNEL_UMOUNT = 1,
++    KSU_FEATURE_SULOG = 2,
++    KSU_FEATURE_ADB_ROOT = 3,
++    KSU_FEATURE_SELINUX_HIDE = 4,
++
++    // custom extensions
++    KSU_FEATURE_AVC_SPOOF = 10003,
++
++    KSU_FEATURE_MAX
++};
++
++#endif
+--- a/kernel/kernelsu/uapi/sulog.h
++++ b/kernel/kernelsu/uapi/sulog.h
+@@ -0,0 +1,33 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
++#ifndef __KSU_UAPI_SULOG_H
++#define __KSU_UAPI_SULOG_H
++
++#include <linux/sched.h>
++#include <linux/types.h>
++
++#define KSU_SULOG_EVENT_VERSION 1
++#ifndef TASK_COMM_LEN
++#define TASK_COMM_LEN 16
++#endif
++
++enum ksu_sulog_event_type {
++    KSU_SULOG_EVENT_ROOT_EXECVE = 1,
++    KSU_SULOG_EVENT_SUCOMPAT = 2,
++    KSU_SULOG_EVENT_IOCTL_GRANT_ROOT = 3,
++};
++
++struct ksu_sulog_event {
++    __u16 version;
++    __u16 event_type;
++    __s32 retval;
++    __u32 pid;
++    __u32 tgid;
++    __u32 ppid;
++    __u32 uid;
++    __u32 euid;
++    char comm[TASK_COMM_LEN];
++    __u32 filename_len;
++    __u32 argv_len;
++} __packed;
++
++#endif
+--- a/kernel/kernelsu/uapi/ksu.h
++++ b/kernel/kernelsu/uapi/ksu.h
+@@ -0,0 +1,11 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
++#ifndef __KSU_UAPI_KSU_H
++#define __KSU_UAPI_KSU_H
++
++#include "uapi/supercall.h"
++#include "uapi/app_profile.h"
++#include "uapi/feature.h"
++#include "uapi/selinux.h"
++#include "uapi/sulog.h"
++
++#endif // __KSU_UAPI_KSU_H--- a/kernel/kernelsu/policy/allowlist.c
++++ b/kernel/kernelsu/policy/allowlist.c
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/rcupdate.h>
+ #include <linux/limits.h>
+ #include <linux/rculist.h>
+@@ -12,7 +13,7 @@
+ #include <linux/printk.h>
+ #include <linux/slab.h>
+ #include <linux/types.h>
+-#include <linux/compiler_types.h>
++#include <linux/compiler.h>
+ #include <linux/hashtable.h>
+ #include <linux/kref.h>
+ 
+@@ -412,47 +413,91 @@
+ 	return true;
+ }
+ 
++/* Old kernel APIs may return short I/O; preserve the real errno. */
++static ssize_t ksu_allowlist_read_full(struct file *fp, void *buf,
++                                     size_t size, loff_t *off)
++{
++    size_t done = 0;
++    ssize_t ret;
++    while (done < size) {
++        ret = ksu_kernel_read_compat(fp, (char *)buf + done, size - done, off);
++        if (ret < 0)
++            return ret;
++        if (!ret)
++            break;
++        done += ret;
++    }
++    return done;
++}
++
++static ssize_t ksu_allowlist_write_full(struct file *fp, const void *buf,
++                                      size_t size, loff_t *off)
++{
++    size_t done = 0;
++    ssize_t ret;
++    while (done < size) {
++        ret = ksu_kernel_write_compat(fp, (const char *)buf + done,
++                                      size - done, off);
++        if (ret < 0)
++            return ret;
++        if (!ret)
++            return -EIO;
++        done += ret;
++    }
++    return done;
++}
++
+ // TODO: move to kernel thread or work queue
+ static void do_persistent_allow_list(struct callback_head *_cb)
+ {
+-    u32 magic = FILE_MAGIC;
+-    u32 version = FILE_FORMAT_VERSION;
++    u32 magic = FILE_MAGIC, version = FILE_FORMAT_VERSION;
+     struct perm_data *p = NULL;
++    struct file *fp;
++    const struct cred *saved;
+     loff_t off = 0;
++    ssize_t ret;
+     int i;
+ 
+-    const struct cred *saved = override_creds(ksu_cred);
+-    struct file *fp =
+-        filp_open(KERNEL_SU_ALLOWLIST, O_WRONLY | O_CREAT | O_TRUNC, 0644);
++    if (!ksu_cred) {
++        pr_err("save_allow_list: KSU credentials unavailable\n");
++        goto free_cb;
++    }
++    saved = override_creds(ksu_cred);
++    fp = ksu_filp_open_compat(KERNEL_SU_ALLOWLIST, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+     if (IS_ERR(fp)) {
+         pr_err("save_allow_list create file failed: %ld\n", PTR_ERR(fp));
+-        goto out;
+-    }
+-
+-	// store magic and version
+-	if (kernel_write(fp, &magic, sizeof(magic), &off) != sizeof(magic)) {
+-		pr_err("save_allow_list write magic failed.\n");
+-		goto close_file;
+-	}
+-
+-	if (kernel_write(fp, &version, sizeof(version), &off) != sizeof(version)) {
+-		pr_err("save_allow_list write version failed.\n");
+-		goto close_file;
+-	}
++        goto restore;
++    }
++    ret = ksu_allowlist_write_full(fp, &magic, sizeof(magic), &off);
++    if (ret != sizeof(magic))
++        goto write_error;
++    ret = ksu_allowlist_write_full(fp, &version, sizeof(version), &off);
++    if (ret != sizeof(version))
++        goto write_error;
+ 
+     mutex_lock(&allowlist_mutex);
+-    hash_for_each (allow_list, i, p, list) {
+-        pr_info("save allow list, name: %s uid :%d, allow: %d\n", p->profile.key, p->profile.curr_uid,
+-                p->profile.allow_su);
+-
+-        kernel_write(fp, &p->profile, sizeof(p->profile), &off);
++    hash_for_each(allow_list, i, p, list) {
++        ret = ksu_allowlist_write_full(fp, &p->profile, sizeof(p->profile), &off);
++        if (ret != sizeof(p->profile))
++            break;
+     }
+     mutex_unlock(&allowlist_mutex);
+-
++    if (ret < 0)
++        goto write_error;
++    ret = vfs_fsync(fp, 0);
++    if (ret) {
++        pr_err("save_allow_list fsync failed: %zd\n", ret);
++        goto close_file;
++    }
++    pr_info("save_allow_list complete: %lld bytes\n", off);
++    goto close_file;
++write_error:
++    pr_err("save_allow_list write failed: %zd at offset %lld\n", ret, off);
+ close_file:
+-    filp_close(fp, 0);
+-out:
++    filp_close(fp, NULL);
++restore:
+     revert_creds(saved);
++free_cb:
+     kfree(_cb);
+ }
+ 
+@@ -495,7 +540,7 @@
+         if (profile->allow_su) {
+             domain = profile->rp_config.profile.selinux_domain;
+             if (strncmp(domain, "u:r:su:s0", domain_len) == 0) {
+-                strscpy_pad(domain, KSU_DEFAULT_SELINUX_DOMAIN, domain_len);
++                __strscpy_pad(domain, KSU_DEFAULT_SELINUX_DOMAIN, domain_len);
+                 pr_info("migrated domain of profile: %s\n", profile->key);
+             }
+         }
+@@ -513,72 +558,88 @@
+ void ksu_load_allow_list()
+ {
+ #ifdef CONFIG_KSU_DISABLE_POLICY
+-	pr_info("allowlist load skipped because policy is disabled\n");
+-	return;
++    pr_info("allowlist load skipped because policy is disabled\n");
++    return;
+ #endif
+-
+-	loff_t off = 0;
+-	ssize_t ret = 0;
+-	struct file *fp = NULL;
+-	u32 magic;
+-	u32 version;
+-	size_t app_profile_size;
+-
+-	// load allowlist now!
+-	fp = filp_open(KERNEL_SU_ALLOWLIST, O_RDONLY, 0);
+-	if (IS_ERR(fp)) {
+-		pr_err("load_allow_list open file failed: %ld\n", PTR_ERR(fp));
+-		return;
+-	}
+-
+-	// verify magic
+-	if (kernel_read(fp, &magic, sizeof(magic), &off) != sizeof(magic) ||
+-	    magic != FILE_MAGIC) {
+-		pr_err("allowlist file invalid: %d!\n", magic);
+-		goto exit;
+-	}
+-
+-	// get file version
+-	if (kernel_read(fp, &version, sizeof(version), &off) != sizeof(version)) {
+-		pr_err("allowlist read version: %d failed\n", version);
+-		goto exit;
+-	}
+-
+-	if (version < 2 || version > KSU_APP_PROFILE_VER) {
+-		pr_err("invalid allowlist version: %d\n", version);
+-		goto exit;
+-	}
+-
+-	pr_info("allowlist version: %d\n", version);
+-
+-	static const size_t kAppProfileSizePreV4 = 776;
+-	app_profile_size = version < KSU_APP_PROFILE_VER ? kAppProfileSizePreV4 : sizeof(struct app_profile);
+-
+-	while (true) {
+-		struct app_profile profile;
+-
+-		ret = kernel_read(fp, &profile, app_profile_size, &off);
+-
+-		if (ret != app_profile_size) {
+-			if (ret != 0)
+-				pr_info("load_allow_list read err: %zd\n", ret);
+-			break;
+-		}
+-
+-		migrate_profile(version, &profile);
+-
+-		pr_info("load_allow_uid, name: %s, uid: %d, allow: %d\n", profile.key, profile.curr_uid, profile.allow_su);
+-		ksu_set_app_profile(&profile);
+-	}
+-	ksu_show_allow_list();
+-	filp_close(fp, 0);
+-	if (version < KSU_APP_PROFILE_VER)
+-		ksu_persistent_allow_list();
+-	return;
+-
+-exit:
+-	ksu_show_allow_list();
+-	filp_close(fp, 0);
++    loff_t off = 0, file_size;
++    ssize_t ret;
++    struct file *fp;
++    const struct cred *saved;
++    u32 magic = 0, version = 0;
++    unsigned int loaded = 0;
++    size_t app_profile_size;
++    bool complete = false;
++
++    /* Same privileged subjective credentials as the save path. */
++    if (!ksu_cred) {
++        pr_err("load_allow_list: KSU credentials unavailable\n");
++        return;
++    }
++    saved = override_creds(ksu_cred);
++    fp = ksu_filp_open_compat(KERNEL_SU_ALLOWLIST, O_RDONLY, 0);
++    if (IS_ERR(fp)) {
++        pr_err("load_allow_list open file failed: %ld\n", PTR_ERR(fp));
++        goto restore;
++    }
++    if (!S_ISREG(file_inode(fp)->i_mode)) {
++        pr_err("load_allow_list: not a regular file\n");
++        goto close_file;
++    }
++    ret = ksu_allowlist_read_full(fp, &magic, sizeof(magic), &off);
++    if (ret != sizeof(magic)) {
++        pr_err("allowlist read magic failed: %zd at offset %lld\n", ret, off);
++        goto close_file;
++    }
++    if (magic != FILE_MAGIC) {
++        pr_err("allowlist invalid magic: 0x%08x\n", magic);
++        goto close_file;
++    }
++    ret = ksu_allowlist_read_full(fp, &version, sizeof(version), &off);
++    if (ret != sizeof(version)) {
++        pr_err("allowlist read version failed: %zd\n", ret);
++        goto close_file;
++    }
++    if (version < 2 || version > FILE_FORMAT_VERSION) {
++        pr_err("invalid allowlist version: %u\n", version);
++        goto close_file;
++    }
++    app_profile_size = version < FILE_FORMAT_VERSION ? 776 : sizeof(struct app_profile);
++    file_size = i_size_read(file_inode(fp));
++    if (file_size < off || (file_size - off) % app_profile_size ||
++        (file_size - off) / app_profile_size > U16_MAX) {
++        pr_err("allowlist invalid file size: %lld, record size: %zu\n",
++               file_size, app_profile_size);
++        goto close_file;
++    }
++    while (off < file_size) {
++        struct app_profile profile = { 0 };
++        ret = ksu_allowlist_read_full(fp, &profile, app_profile_size, &off);
++        if (ret != app_profile_size) {
++            pr_err("load_allow_list read failed: %zd at offset %lld\n", ret, off);
++            goto close_file;
++        }
++        /* Validate before logging any strings or applying a grant. */
++        if (strnlen(profile.key, sizeof(profile.key)) >= sizeof(profile.key)) {
++            pr_err("load_allow_list invalid record at offset %lld\n", off);
++            goto close_file;
++        }
++        migrate_profile(version, &profile);
++        ret = ksu_set_app_profile(&profile);
++        if (ret) {
++            pr_err("load_allow_list set profile failed: %zd\n", ret);
++            goto close_file;
++        }
++        loaded++;
++    }
++    complete = true;
++    pr_info("load_allow_list complete: version %u, %u profiles\n", version, loaded);
++close_file:
++    filp_close(fp, NULL);
++restore:
++    revert_creds(saved);
++    /* Never rewrite a failed/truncated read as a successful migration. */
++    if (complete && version < FILE_FORMAT_VERSION)
++        ksu_persistent_allow_list();
+ }
+ 
+ void ksu_prune_allowlist(bool (*is_uid_valid)(uid_t, char *, void *),
+--- a/kernel/kernelsu/policy/app_profile.c
++++ b/kernel/kernelsu/policy/app_profile.c
+@@ -1,11 +1,12 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include "hook/patch_memory.h"
+ #include "infra/symbol_resolver.h"
+ #include "linux/kallsyms.h"
+ #include <linux/capability.h>
+ #include <linux/cred.h>
+ #include <linux/sched.h>
+-#include <linux/sched/user.h>
+-#include <linux/sched/signal.h>
++#include <linux/sched.h>
++#include <linux/sched.h>
+ #include <linux/seccomp.h>
+ #include <linux/slab.h>
+ #include <linux/thread_info.h>
+--- a/kernel/kernelsu/runtime/ksud_integration.c
++++ b/kernel/kernelsu/runtime/ksud_integration.c
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/rcupdate.h>
+ #include <linux/slab.h>
+ #include <linux/task_work.h>
+@@ -31,7 +32,7 @@
+ #include <linux/namei.h>
+ #include <linux/workqueue.h>
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+-#include <linux/sched/signal.h>
++#include <linux/sched.h>
+ #else
+ #include <linux/sched.h>
+ #endif
+@@ -77,12 +78,12 @@
+ 
+ static struct file *open_module_rc(const char **chosen_path)
+ {
+-	struct file *f = filp_open(MODULE_RC_PATH_WATCHDOG, O_RDONLY, 0);
++	struct file *f = ksu_filp_open_compat(MODULE_RC_PATH_WATCHDOG, O_RDONLY, 0);
+ 	if (!IS_ERR(f)) {
+ 		*chosen_path = MODULE_RC_PATH_WATCHDOG;
+ 		return f;
+ 	}
+-	f = filp_open(MODULE_RC_PATH_DEFAULT, O_RDONLY, 0);
++	f = ksu_filp_open_compat(MODULE_RC_PATH_DEFAULT, O_RDONLY, 0);
+ 	if (!IS_ERR(f)) {
+ 		*chosen_path = MODULE_RC_PATH_DEFAULT;
+ 		return f;
+@@ -134,7 +135,7 @@
+ 		goto out_close_file;
+ 	}
+ 
+-	r = kernel_read(f, module_rc_buf, fsize, &pos);
++	r = ksu_kernel_read_compat(f, module_rc_buf, fsize, &pos);
+ 
+ 	if (r <= 0) {
+ 		pr_err("module rc: read failed: %zd\n", r);
+@@ -630,7 +631,12 @@
+ 
+ void ksu_handle_sys_read(unsigned int fd)
+ {
+-    struct file *file = fget(fd);
++    struct file *file;
++#ifndef KSU_KPROBES_HOOK
++    if (likely(!ksu_init_rc_hook))
++        return;
++#endif
++    file = fget(fd);
+     if (!file) return;
+ 
+     if (is_init_rc(file)) {
+--- a/kernel/kernelsu/infra/su_mount_ns.c
++++ b/kernel/kernelsu/infra/su_mount_ns.c
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/dcache.h>
+ #include <linux/errno.h>
+ #include <linux/fdtable.h>
+@@ -8,7 +9,7 @@
+ #include <linux/namei.h>
+ #include <linux/proc_ns.h>
+ #include <linux/pid.h>
+-#include <linux/sched/task.h>
++#include <linux/sched.h>
+ #include <linux/slab.h>
+ #include <linux/syscalls.h>
+ #include <linux/version.h>
+--- a/kernel/kernelsu/infra/seccomp_cache.c
++++ b/kernel/kernelsu/infra/seccomp_cache.c
+@@ -1,8 +1,9 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/version.h>
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+ #include <linux/fs.h>
+ #include <linux/nsproxy.h>
+-#include <linux/sched/task.h>
++#include <linux/sched.h>
+ #include <linux/uaccess.h>
+ #include <linux/filter.h>
+ #include <linux/seccomp.h>
+--- a/kernel/kernelsu/sulog/event.c
++++ b/kernel/kernelsu/sulog/event.c
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <asm/current.h>
+ #include <linux/compat.h>
+ #include <linux/cred.h>
+@@ -6,7 +7,7 @@
+ #include <linux/overflow.h>
+ #include <linux/version.h>
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+-#include <linux/sched/signal.h>
++#include <linux/sched.h>
+ #endif
+ 
+ #include <linux/slab.h>
+--- a/kernel/kernelsu/sulog/event.h
++++ b/kernel/kernelsu/sulog/event.h
+@@ -1,9 +1,10 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #ifndef __KSU_H_SULOG_EVENT
+ #define __KSU_H_SULOG_EVENT
+ 
+ #include <linux/version.h>
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+-#include <linux/compiler_types.h>
++#include <linux/compiler.h>
+ #else
+ #include <linux/compiler.h>
+ #endif
+--- a/kernel/kernelsu/hook/lsm_hooks.c
++++ b/kernel/kernelsu/hook/lsm_hooks.c
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/lsm_hooks.h>
+ #include <linux/uidgid.h>
+ #include <linux/version.h>
+@@ -27,8 +28,14 @@
+ 		// we are only interested in `init` process
+ 		return 0;
+ 	}
+-	init_session_keyring = cred->session_keyring;
+-	pr_info("kernel_compat: got init_session_keyring\n");
++	if (cred->session_keyring) {
++		struct key *keyring = key_get(cred->session_keyring);
++		if (cmpxchg(&init_session_keyring, NULL, keyring))
++			key_put(keyring);
++		else
++			pr_info("kernel_compat: retained init_session_keyring\n");
++	}
++
+ 	return 0;
+ }
+ #endif
+--- a/kernel/kernelsu/hook/setuid_hook.c
++++ b/kernel/kernelsu/hook/setuid_hook.c
+@@ -1,6 +1,7 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/compiler.h>
+ #include <linux/version.h>
+-#include <linux/sched/signal.h>
++#include <linux/sched.h>
+ #include <linux/slab.h>
+ #include <linux/task_work.h>
+ #include <linux/thread_info.h>
+--- a/kernel/kernelsu/include/util.h
++++ b/kernel/kernelsu/include/util.h
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #ifndef __KSU_H_UTIL
+ #define __KSU_H_UTIL
+ 
+@@ -11,6 +12,7 @@
+ #include <linux/ptrace.h>
+ 
+ #include "arch.h"
++#include "compat/kernel_compat.h"
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+ 
+@@ -94,22 +96,7 @@
+ 
+ static inline struct file *ksu_filp_open_nonotify(const char *path, int flags)
+ {
+-    struct path p;
+-    struct file *f;
+-    int ret;
+-    ret = kern_path(path, (flags & O_NOFOLLOW) ? 0 : LOOKUP_FOLLOW, &p);
+-    if (ret) {
+-        return ERR_PTR(ret);
+-    }
+-
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
+-    f = dentry_open_nonotify(&p, flags, current_cred());
+-#else
+-    f = dentry_open(&p, flags | __FMODE_NONOTIFY, current_cred());
+-#endif
+-
+-    path_put(&p);
+-    return f;
++    return ksu_filp_open_nonotify_compat(path, flags);
+ }
+ 
+ #endif--- a/kernel/kernelsu/compat/kernel_compat.c
++++ b/kernel/kernelsu/compat/kernel_compat.c
+@@ -1,18 +1,78 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include <linux/version.h>
+ #include <linux/fs.h>
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+-#include <linux/sched/task.h>
++#include <linux/sched.h>
+ #else
+ #include <linux/sched.h>
+ #endif
+ #include <linux/uaccess.h>
+ #include <linux/fdtable.h>
++#include <linux/cred.h>
++#include <linux/key.h>
++#include <linux/namei.h>
+ #include "klog.h" // IWYU pragma: keep
+ #include "kernel_compat.h"
+ 
++/* A ksu_cred prepared at kernel init lacks Android's fscrypt keyring.
++ * Clone subjective credentials temporarily; never commit while overridden.
++ * Only fill a missing keyring, retaining every existing identity/capability.
++ */
++static struct file *ksu_open_with_init_keyring(const char *filename, int flags,
++                                             umode_t mode, bool nonotify)
++{
++    struct cred *temporary = NULL;
++    const struct cred *saved = NULL;
++    struct file *fp;
++    struct path path;
++    int ret;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || \
++    defined(CONFIG_IS_HW_HISI) || defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)
++    struct key *keyring = READ_ONCE(init_session_keyring);
++    extern int install_session_keyring_to_cred(struct cred *, struct key *);
++
++    if (keyring && !current_cred()->session_keyring) {
++        temporary = prepare_creds();
++        if (!temporary)
++            return ERR_PTR(-ENOMEM);
++        ret = install_session_keyring_to_cred(temporary, keyring);
++        if (ret) {
++            abort_creds(temporary);
++            return ERR_PTR(ret);
++        }
++        saved = override_creds(temporary);
++    }
++#endif
++    if (!nonotify) {
++        fp = filp_open(filename, flags, mode);
++    } else {
++        ret = kern_path(filename, (flags & O_NOFOLLOW) ? 0 : LOOKUP_FOLLOW, &path);
++        if (ret) {
++            fp = ERR_PTR(ret);
++        } else {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 14, 0)
++            fp = dentry_open_nonotify(&path, flags, current_cred());
++#else
++            fp = dentry_open(&path, flags | __FMODE_NONOTIFY, current_cred());
++#endif
++            path_put(&path);
++        }
++    }
++    if (temporary) {
++        revert_creds(saved);
++        put_cred(temporary);
++    }
++    return fp;
++}
++
+ struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
+ {
+-	return filp_open(filename, flags, mode);
++    return ksu_open_with_init_keyring(filename, flags, mode, false);
++}
++
++struct file *ksu_filp_open_nonotify_compat(const char *filename, int flags)
++{
++    return ksu_open_with_init_keyring(filename, flags, 0, true);
+ }
+ 
+ ssize_t ksu_kernel_read_compat(struct file *p, void *buf, size_t count,
+--- a/kernel/kernelsu/compat/kernel_compat.h
++++ b/kernel/kernelsu/compat/kernel_compat.h
+@@ -1,9 +1,12 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #ifndef __KSU_H_KERNEL_COMPAT
+ #define __KSU_H_KERNEL_COMPAT
+ 
+ #include <linux/fs.h>
+ #include <linux/version.h>
+ #include <linux/task_work.h>
++#include <linux/slab.h>
++#include <linux/vmalloc.h>
+ #include "ss/policydb.h"
+ #include "linux/key.h"
+ 
+@@ -30,6 +33,7 @@
+ 
+ extern struct file *ksu_filp_open_compat(const char *filename, int flags,
+ 					 umode_t mode);
++extern struct file *ksu_filp_open_nonotify_compat(const char *filename, int flags);
+ extern ssize_t ksu_kernel_read_compat(struct file *p, void *buf, size_t count,
+ 				      loff_t *pos);
+ extern ssize_t ksu_kernel_write_compat(struct file *p, const void *buf,
+@@ -68,8 +72,8 @@
+ static inline void *ksu_kvmalloc(size_t size, gfp_t flags)
+ {
+ 	void *buf = kmalloc(size, flags);
+-	if (!buf)
+-		buf = vmalloc(size);
++	if (!buf && (flags & __GFP_DIRECT_RECLAIM))
++		buf = (flags & __GFP_ZERO) ? vzalloc(size) : vmalloc(size);
+ 	
+ 	return buf;
+ }
+@@ -83,6 +87,14 @@
+ }
+ #define kvmalloc ksu_kvmalloc
+ #define kvfree ksu_kvfree
++
++static inline void *ksu_kvcalloc(size_t n, size_t size, gfp_t flags)
++{
++	if (size && n > SIZE_MAX / size)
++		return NULL;
++	return ksu_kvmalloc(n * size, flags | __GFP_ZERO);
++}
++#define kvcalloc ksu_kvcalloc
+ #endif
+ 
+ // https://elixir.bootlin.com/linux/v4.14.222/source/lib/string.c#L282
+--- a/kernel/kernelsu/manager/apk_sign.c
++++ b/kernel/kernelsu/manager/apk_sign.c
+@@ -1,4 +1,6 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include "util.h"
++#include "compat/kernel_compat.h"
+ #include <linux/err.h>
+ #include <linux/fs.h>
+ #include <linux/gfp.h>
+@@ -80,7 +82,7 @@
+ 	if (*pos < 0 || *pos > end || size > (size_t)(end - *pos))
+ 		return false;
+ 
+-	return kernel_read(fp, buffer, size, pos) == (ssize_t)size;
++	return ksu_kernel_read_compat(fp, buffer, size, pos) == (ssize_t)size;
+ }
+ 
+ static bool read_length_prefixed_end(struct file *fp, loff_t *pos, loff_t container_end, loff_t *value_end)
+@@ -153,14 +155,14 @@
+ 	u32 zip64_locator_magic;
+ 	u64 size_of_block, size_of_block_at_head;
+ 
+-	loff_t pos, pairs_end, file_size, eocd_offset;
++	loff_t pos, pairs_end, file_size, eocd_offset = -1;
+ 
+ 	bool v2_signing_valid = false;
+ 	int v2_signing_blocks = 0;
+ 
+ 	struct file *fp = ksu_filp_open_nonotify(path, O_RDONLY | O_NOATIME);
+ 	if (IS_ERR(fp)) {
+-		pr_err("open %s error.\n", path);
++		pr_err("open %s error: %ld\n", path, PTR_ERR(fp));
+ 		return false;
+ 	}
+ 
+@@ -171,7 +173,7 @@
+ 	// https://en.wikipedia.org/wiki/Zip_(file_format)#End_of_central_directory_record_(EOCD)
+ 	// Buffered backward search (single read) instead of the upstream
+ 	// byte-by-byte loop: scanning /data/app at boot with thousands of
+-	// 2-byte kernel_read() calls stalls the device for ages.
++	// 2-byte ksu_kernel_read_compat() calls stalls the device for ages.
+ 	{
+ 		unsigned char *eocd_buffer;
+ 		long search_size;
+@@ -190,7 +192,10 @@
+ 		}
+ 
+ 		pos = file_size - search_size;
+-		kernel_read(fp, eocd_buffer, search_size, &pos);
++		if (ksu_kernel_read_compat(fp, eocd_buffer, search_size, &pos) != search_size) {
++			kvfree(eocd_buffer);
++			goto clean;
++		}
+ 
+ 		if (search_size >= eocd_min_size) {
+ 			long j;
+--- a/kernel/kernelsu/manager/throne_tracker.c
++++ b/kernel/kernelsu/manager/throne_tracker.c
+@@ -1,3 +1,4 @@
++/* Polaris Linux 4.9 integration changes: 2026-10-13/14; see build-support/CHANGES.md. */
+ #include "ksu.h"
+ #include "linux/cred.h"
+ #include "util.h"
+@@ -14,6 +15,7 @@
+ #include "klog.h" // IWYU pragma: keep
+ #include "manager/manager_identity.h"
+ #include "manager/throne_tracker.h"
++#include "compat/kernel_compat.h"
+ 
+ uid_t ksu_manager_appid = KSU_INVALID_APPID;
+ 
+@@ -263,7 +265,7 @@
+ void track_throne(bool prune_only)
+ {
+ 	const struct cred *old_cred = override_creds(ksu_cred);
+-	struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
++	struct file *fp = ksu_filp_open_compat(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
+ 	if (IS_ERR(fp)) {
+ 		pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__,
+ 			PTR_ERR(fp));
+@@ -278,13 +280,13 @@
+ 	loff_t line_start = 0;
+ 	char buf[KSU_MAX_PACKAGE_NAME];
+ 	for (;;) {
+-		ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
++		ssize_t count = ksu_kernel_read_compat(fp, &chr, sizeof(chr), &pos);
+ 		if (count != sizeof(chr))
+ 			break;
+ 		if (chr != '\n')
+ 			continue;
+ 
+-		count = kernel_read(fp, buf, sizeof(buf) - 1, &line_start);
++		count = ksu_kernel_read_compat(fp, buf, sizeof(buf) - 1, &line_start);
+ 		if (count <= 0) {
+ 			break;
+ 		}

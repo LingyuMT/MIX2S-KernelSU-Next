@@ -116,8 +116,7 @@ all.config
 # Kdevelop4
 *.kdev4
 
-#audio-kernel
-techpack/audio/
+# Integrated audio sources are tracked in this repository.
 
 # fetched Android config fragments
 kernel/configs/android-*.cfg
@@ -142,3 +141,7 @@ id_ed25519*
 !/.github/
 !/.github/**
 !/.gitattributes
+
+# Keep the documented compatibility patch in the source distribution.
+!/build-support/patches/
+!/build-support/patches/*.patch

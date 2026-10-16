@@ -1,0 +1,7 @@
+# Polaris audio integration changes: 2026-10-13/14; see build-support/CHANGES.md.
+# UAPI Header export list
+# Top-level Makefile calls into asm-$(ARCH)
+# List only non-arch directories below
+
+header-y += linux/
+header-y += sound/
